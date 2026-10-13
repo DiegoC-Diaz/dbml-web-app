@@ -1,1 +1,1 @@
-export {LoginPage} from "./login/LoginPage"
+export {LoginPage} from "../modules/Auth/LoginPage"
