@@ -3,8 +3,8 @@ import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PublicRoute } from './components/PublicRoute'
 import { Layout } from './components/Layout'
-import { LoginPage } from './pages/LoginPage'
-import { DashboardPage } from './pages/DashboardPage'
+import { LoginPage } from './modules/Auth/LoginPage'
+import { HomePage } from './modules/HomePage/HomePage'
 import { ProfilePage } from './pages/ProfilePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -61,7 +61,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             {/* Layout provides shared navbar, header, and container */}
             <Route element={<Layout />}>
-              <Route path="/" element={<DashboardPage />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
