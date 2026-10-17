@@ -2,10 +2,16 @@ import axios ,{AxiosError, type InternalAxiosRequestConfig} from "axios";
 import { tokenStore } from "./tokenStore";
 
 
-export const api=axios.create({
-    baseURL:import.meta.env.VITE_BASE_API_URL,
-    timeout:10_000,
-    withCredentials:true,
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BASE_API_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:3001'
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10_000,
+  withCredentials: true,
 })
 
 

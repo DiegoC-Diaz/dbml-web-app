@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { PublicRoute } from './components/PublicRoute'
 import { Layout } from './components/Layout'
 import { LoginPage } from './modules/Auth/LoginPage'
+import { RegisterPage } from './modules/Auth/RegisterPage'
 import { HomePage } from './modules/HomePage/HomePage'
 import { ProfilePage } from './pages/ProfilePage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -52,6 +53,7 @@ function App() {
           {/* ========================================================= */}
           <Route element={<PublicRoute />}>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
           </Route>
 
           {/* ========================================================= */}

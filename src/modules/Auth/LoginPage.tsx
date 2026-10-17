@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useLocation, useNavigate, Link } from 'react-router'
-import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { getApiErrorMessage } from '../../lib/http/error'
 
 /**
  * ============================================================================
@@ -69,14 +70,16 @@ export function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setServerError(null)
-      // Call AuthContext login method
-      await login(data.email, data.email.split('@')[0])
-      
-      // Navigate to destination.
-      // replace: true replaces the /login history entry so the Back button doesn't loop back to login.
+      // Call AuthContext login method with email and password
+      await login(data.email, data.password)
+    
       navigate(fromLocation, { replace: true })
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : 'Login failed. Please try again.')
+      const friendlyMessage = getApiErrorMessage(
+        err,
+        'Credenciales incorrectas. Por favor verifica tu correo y contraseña.'
+      )
+      setServerError(friendlyMessage)
     }
   }
 
@@ -100,9 +103,22 @@ export function LoginPage() {
         <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-200/50">
           {/* Server Error Alert */}
           {serverError && (
-            <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50/80 p-3.5 text-sm text-red-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{serverError}</span>
+            <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50/90 p-4 text-sm text-red-700 shadow-sm transition-all">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                <div>
+                  <p className="font-semibold text-red-800">No se pudo iniciar sesión</p>
+                  <p className="mt-0.5 text-xs text-red-600">{serverError}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setServerError(null)}
+                className="text-red-400 hover:text-red-600 transition"
+                aria-label="Cerrar alerta"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
 
@@ -227,10 +243,16 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* Helper Quick Fill Hint */}
+          {/* Card Footer: Link to Register */}
           <div className="mt-6 border-t border-slate-100 pt-4 text-center">
-            <p className="text-xs text-slate-500">
-              Demo tip: You can enter any valid email and 6+ character password.
+            <p className="text-xs text-slate-600">
+              Don't have an account?{' '}
+              <Link
+                to="/register"
+                className="font-semibold text-indigo-600 hover:text-indigo-500 transition"
+              >
+                Sign up now
+              </Link>
             </p>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-
+import { api } from '../lib/http/client'
+import { tokenStore } from '../lib/http/tokenStore'
 /**
  * Interface defining the authenticated user object.
  */
@@ -17,7 +18,7 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, name?: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -49,27 +50,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // 2. Simulated login action (in real app, call your backend API here)
-  const login = async (email: string, name = 'Jane Doe') => {
-    setIsLoading(true)
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 600))
 
+  const login = async (email: string, password: string) => {
+    const response = await api.post('/auth/login', { email, password })
+
+    if (response.data.token) {
+      tokenStore.set(response.data.token)
+    }
+
+    const userData = response.data.user || response.data
     const loggedInUser: User = {
-      id: 'usr_' + Math.random().toString(36).substring(2, 9),
-      email,
-      name,
-      role: 'user',
+      id: userData.id,
+      email: userData.email,
+      name: userData.username || userData.name || userData.email.split('@')[0],
+      role: userData.role || 'user',
     }
 
     setUser(loggedInUser)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedInUser))
-    setIsLoading(false)
   }
+      
 
   // 3. Logout action: clear state and storage
   const logout = () => {
     setUser(null)
+    tokenStore.set(null)
     localStorage.removeItem(STORAGE_KEY)
   }
 
