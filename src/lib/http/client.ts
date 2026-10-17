@@ -27,7 +27,9 @@ let refreshPromise:Promise<string>|null=null
 async function refreshAccessToken() {
   // Usa axios "limpio" (no `api`) para no pasar por los interceptores
   const { data } = await axios.post(
-    `${import.meta.env.VITE_API_URL}/auth/refresh`, null, { withCredentials: true },
+    `${API_BASE_URL}/auth/refresh`,
+    null,
+    { withCredentials: true },
   )
   tokenStore.set(data.accessToken)
   return data.accessToken as string
@@ -37,7 +39,12 @@ api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
-    if (error.response?.status === 401 && original && !original._retry) {
+    const isAuthEndpoint =
+      original?.url?.includes('/auth/login') ||
+      original?.url?.includes('/auth/register') ||
+      original?.url?.includes('/auth/refresh')
+
+    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
       original._retry = true
       try {
         refreshPromise ??= refreshAccessToken().finally(() => { refreshPromise = null })

@@ -69,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(loggedInUser)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedInUser))
   }
-      
 
   // 3. Logout action: clear state and storage
   const logout = () => {
