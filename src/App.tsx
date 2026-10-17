@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -6,6 +7,9 @@ import { Layout } from './components/Layout'
 import { LoginPage } from './modules/Auth/LoginPage'
 import { RegisterPage } from './modules/Auth/RegisterPage'
 import { HomePage } from './modules/HomePage/HomePage'
+const CanvasPage = lazy(() =>
+  import('./modules/Canvas').then((m) => ({ default: m.CanvasPage })),
+)
 import { ProfilePage } from './pages/ProfilePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -47,6 +51,22 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* ========================================================= */}
+          {/* OPEN ROUTE: DBML editor, no auth guard (logged in or not) */}
+          {/* ========================================================= */}
+          <Route
+            path="/editor"
+            element={
+              <Suspense
+                fallback={
+                  <div className="p-6 text-sm text-slate-500">Cargando editor…</div>
+                }
+              >
+                <CanvasPage />
+              </Suspense>
+            }
+          />
+
           {/* ========================================================= */}
           {/* PUBLIC / GUEST ROUTES (e.g. /login)                       */}
           {/* Uses PublicRoute so logged-in users are redirected away.  */}
