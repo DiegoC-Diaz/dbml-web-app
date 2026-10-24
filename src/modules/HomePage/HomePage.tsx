@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router'
 import {
   FolderKanban,
   Plus,
@@ -8,48 +9,45 @@ import {
   Clock,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useProjects } from '../Project/hook'
 import { ProjectSearchBar } from './components/ProjectSearchBar'
 import { ProjectList } from './components/ProjectList'
-import { INITIAL_PROJECTS } from './data/mockProjects'
 import { calculateSemanticSimilarity } from './utils/semanticSearch'
 import type { Project, ProjectFilter } from './types'
 
 /**
  * HomePage Component
- * 
- * Replaces previous generic dashboard with a full-fledged workspace homepage:
- * - Search bar with semantic similarity matching on project titles and metadata
+ *
+ * Uses `useProjects` hook to fetch user's active DBML projects from the API:
+ * - Search bar with semantic similarity matching on project titles, descriptions, and DBML content
  * - Advanced filters: Alphabetical (A-Z, Z-A) and Date (Newest/Oldest), plus `from_date`
- * - Clean, accessible list view of all projects the user is currently working on
- * - State managed according to specifications: `search_term` and `filter { ascending, from_date, sortBy }`
+ * - Navigates to `/editor/:id` when opening a project so Canvas fetches and loads its DBML document
  */
 export function HomePage() {
   const { user } = useAuth()
-
-  // Project data state
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS)
+  const navigate = useNavigate()
 
   // 1. Search term state
   const [searchTerm, setSearchTerm] = useState<string>('')
 
-  // 2. Filter state with required shape: { ascending: boolean, from_date: string | null }
+  // 2. Filter state with required shape: { ascending: boolean, from_date: string | null, sortBy }
   const [filter, setFilter] = useState<ProjectFilter>({
     ascending: false, // Default: most recent first (or Z-A)
     from_date: null,
     sortBy: 'date',
   })
 
-  // Handlers for toggling stars and opening projects
-  const handleToggleStar = (projectId: string) => {
-    setProjects((prev) =>
-      prev.map((proj) =>
-        proj.id === projectId ? { ...proj, stars: proj.stars + 1 } : proj
-      )
-    )
-  }
+  // 3. Query projects from backend via useProjects hook
+  const {
+    data: projects,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useProjects()
 
   const handleOpenProject = (project: Project) => {
-    alert(`Abriendo espacio de trabajo para: ${project.title}`)
+    navigate(`/editor/${project.id}`)
   }
 
   const handleResetFilters = () => {
@@ -62,18 +60,15 @@ export function HomePage() {
   }
 
   /**
-   * React 19 Best Practice:
-   * Compute derived state during render with useMemo instead of synchronizing
-   * via useEffect!
+   * Compute derived filtered and sorted projects during render with useMemo
    */
-  const filteredAndSortedProjects = useMemo(() => {
+  const filteredAndSortedProjects = useMemo<Project[]>(() => {
     // Step 1: Filter by from_date if specified
-    let result = projects.filter((project) => {
+    let result: Project[] = projects.filter((project) => {
       if (!filter.from_date) return true
-      return (
-        project.createdAt >= filter.from_date ||
-        project.updatedAt >= filter.from_date
-      )
+      const createdDate = project.createdAt.split('T')[0]
+      const updatedDate = (project.updatedAt ?? project.createdAt).split('T')[0]
+      return createdDate >= filter.from_date || updatedDate >= filter.from_date
     })
 
     // Step 2: Filter by semantic similarity if a search term exists
@@ -95,22 +90,21 @@ export function HomePage() {
         const comp = a.title.localeCompare(b.title, 'es', { sensitivity: 'base' })
         return filter.ascending ? comp : -comp
       } else {
-        // Sort by updatedAt date
-        const timeA = new Date(a.updatedAt).getTime()
-        const timeB = new Date(b.updatedAt).getTime()
+        const timeA = new Date(a.updatedAt ?? a.createdAt).getTime()
+        const timeB = new Date(b.updatedAt ?? b.createdAt).getTime()
         return filter.ascending ? timeA - timeB : timeB - timeA
       }
     })
   }, [projects, searchTerm, filter])
 
-  // Overview metrics
+  // Overview metrics derived from fetched projects
   const activeCount = useMemo(
-    () => projects.filter((p) => p.status === 'in_progress').length,
-    [projects]
+    () => projects.filter((p) => p.isActive).length,
+    [projects],
   )
-  const completedCount = useMemo(
-    () => projects.filter((p) => p.status === 'completed').length,
-    [projects]
+  const updatedCount = useMemo(
+    () => projects.filter((p) => p.updatedAt !== null).length,
+    [projects],
   )
 
   return (
@@ -132,7 +126,7 @@ export function HomePage() {
 
         <button
           type="button"
-          onClick={() => alert('Crear nuevo proyecto')}
+          onClick={() => navigate('/editor')}
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition shrink-0"
         >
           <Plus className="h-4 w-4" />
@@ -157,7 +151,7 @@ export function HomePage() {
             <Clock className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs font-medium text-slate-500">En Desarrollo</p>
+            <p className="text-xs font-medium text-slate-500">Proyectos Activos</p>
             <p className="text-xl font-bold text-slate-900">{activeCount}</p>
           </div>
         </div>
@@ -167,8 +161,8 @@ export function HomePage() {
             <CheckCircle2 className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs font-medium text-slate-500">Completados</p>
-            <p className="text-xl font-bold text-slate-900">{completedCount}</p>
+            <p className="text-xs font-medium text-slate-500">Con Versiones Guardadas</p>
+            <p className="text-xl font-bold text-slate-900">{updatedCount}</p>
           </div>
         </div>
       </div>
@@ -195,8 +189,11 @@ export function HomePage() {
       <section aria-label="Lista de proyectos">
         <ProjectList
           projects={filteredAndSortedProjects}
+          isLoading={isLoading}
+          isError={isError}
+          error={error}
+          onRetry={() => void refetch()}
           onOpenProject={handleOpenProject}
-          onToggleStar={handleToggleStar}
           onResetFilters={handleResetFilters}
         />
       </section>

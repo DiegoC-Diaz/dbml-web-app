@@ -7,18 +7,23 @@ export type ProjectStatus = 'in_progress' | 'review' | 'completed' | 'planning'
 export interface Project {
   id: string
   title: string
-  description: string
-  category: string
-  status: ProjectStatus
-  createdAt: string // ISO date string YYYY-MM-DD
-  updatedAt: string // ISO date string YYYY-MM-DD
-  stars: number
-  collaborators: {
+  description: string | null
+  createdAt: string
+  updatedAt: string | null
+  ownerUserId?: string
+  createdBy?: string
+  isActive?: boolean
+  currentDbml?: string
+  layoutMetadata?: Record<string, unknown> | null
+  category?: string
+  status?: ProjectStatus
+  stars?: number
+  collaborators?: {
     name: string
     avatar: string
   }[]
-  tags: string[]
-  semanticKeywords: string[]
+  tags?: string[]
+  semanticKeywords?: string[]
 }
 
 export type SortByField = 'alphabetical' | 'date'

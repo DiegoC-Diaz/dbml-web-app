@@ -68,7 +68,7 @@ function diceSimilarity(str1: string, str2: string): number {
 
 /**
  * Calculates a semantic similarity score (0.0 to 1.0) between a user search term
- * and a Project's title, semantic keywords, tags, and category.
+ * and a Project's title, description, DBML content, semantic keywords, tags, and category.
  */
 export function calculateSemanticSimilarity(query: string, project: Project): number {
   const normalizedQuery = normalizeText(query)
@@ -78,19 +78,19 @@ export function calculateSemanticSimilarity(query: string, project: Project): nu
   if (queryTokens.length === 0) return 1.0
 
   const normalizedTitle = normalizeText(project.title)
+  const normalizedDescription = normalizeText(project.description ?? '')
 
-  // 1. Direct title match or prefix match
+  // 1. Direct title or description match
   if (normalizedTitle === normalizedQuery) return 1.0
   if (normalizedTitle.includes(normalizedQuery)) return 0.95
+  if (normalizedDescription.includes(normalizedQuery)) return 0.85
 
   // 2. Expand query tokens using semantic clusters
   const expandedQuerySet = new Set<string>(queryTokens)
   for (const token of queryTokens) {
-    // Check direct cluster
     if (SEMANTIC_CLUSTERS[token]) {
       SEMANTIC_CLUSTERS[token].forEach((synonym) => expandedQuerySet.add(synonym))
     }
-    // Check reverse cluster matches
     for (const [key, synonyms] of Object.entries(SEMANTIC_CLUSTERS)) {
       if (synonyms.includes(token)) {
         expandedQuerySet.add(key)
@@ -99,14 +99,16 @@ export function calculateSemanticSimilarity(query: string, project: Project): nu
     }
   }
 
-  // 3. Pool of project semantic targets (title tokens, tags, keywords, category)
+  // 3. Pool of project semantic targets (title tokens, description tokens, DBML tokens, tags, keywords, category)
   const titleTokens = tokenize(project.title)
-  const keywordTokens = project.semanticKeywords.map(normalizeText)
-  const tagTokens = project.tags.map(normalizeText)
-  const categoryToken = normalizeText(project.category)
+  const descriptionTokens = tokenize(project.description ?? '')
+  const dbmlTokens = tokenize(project.currentDbml ?? '')
+  const keywordTokens = (project.semanticKeywords ?? []).map(normalizeText)
+  const tagTokens = (project.tags ?? []).map(normalizeText)
+  const categoryToken = normalizeText(project.category ?? '')
 
   let matchedWeight = 0
-  let totalWeight = queryTokens.length
+  const totalWeight = queryTokens.length
 
   for (const qToken of queryTokens) {
     let bestTokenScore = 0
@@ -125,8 +127,24 @@ export function calculateSemanticSimilarity(query: string, project: Project): nu
       }
     }
 
+    // Compare with description tokens
+    for (const dToken of descriptionTokens) {
+      if (dToken === qToken || expandedQuerySet.has(dToken)) {
+        bestTokenScore = Math.max(bestTokenScore, 0.75)
+      } else if (dToken.includes(qToken)) {
+        bestTokenScore = Math.max(bestTokenScore, 0.65)
+      }
+    }
+
+    // Compare with DBML tokens (e.g. table or column names)
+    for (const dbmlToken of dbmlTokens) {
+      if (dbmlToken === qToken || expandedQuerySet.has(dbmlToken)) {
+        bestTokenScore = Math.max(bestTokenScore, 0.7)
+      }
+    }
+
     // Compare with category and tags
-    if (categoryToken.includes(qToken)) {
+    if (categoryToken && categoryToken.includes(qToken)) {
       bestTokenScore = Math.max(bestTokenScore, 0.7)
     }
     for (const tag of tagTokens) {

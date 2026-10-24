@@ -66,6 +66,18 @@ function App() {
               </Suspense>
             }
           />
+          <Route
+            path="/editor/:id"
+            element={
+              <Suspense
+                fallback={
+                  <div className="p-6 text-sm text-slate-500">Cargando editor…</div>
+                }
+              >
+                <CanvasPage />
+              </Suspense>
+            }
+          />
 
           {/* ========================================================= */}
           {/* PUBLIC / GUEST ROUTES (e.g. /login)                       */}
